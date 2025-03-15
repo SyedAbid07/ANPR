@@ -1,9 +1,13 @@
 import cv2
+import pytesseract
 import os
 
+# Set Tesseract Path (For Windows)
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"  
+
 # Frame Settings
-frameWidth = 1000  # Frame Width
-frameHeight = 480  # Frame Height
+frameWidth = 1000  
+frameHeight = 480  
 
 # Load Haarcascade for Number Plate Detection
 plateCascade = cv2.CascadeClassifier("haarcascade_russian_plate_number.xml")
@@ -21,9 +25,9 @@ if not os.path.exists("IMAGES"):
 
 # Open Webcam
 cap = cv2.VideoCapture(0)
-cap.set(3, frameWidth)  # Set width
-cap.set(4, frameHeight)  # Set height
-cap.set(10, 150)  # Set brightness
+cap.set(3, frameWidth)  
+cap.set(4, frameHeight)  
+cap.set(10, 150)  
 count = 0
 
 while True:
@@ -39,8 +43,19 @@ while True:
         area = w * h
         if area > minArea:
             cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
-            cv2.putText(img, "Number Plate", (x, y - 5), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
             imgRoi = img[y:y + h, x:x + w]
+
+            # Convert to grayscale and apply threshold to improve OCR
+            imgRoiGray = cv2.cvtColor(imgRoi, cv2.COLOR_BGR2GRAY)
+            _, imgRoiThresh = cv2.threshold(imgRoiGray, 150, 255, cv2.THRESH_BINARY)
+
+            # Extract text from the number plate using Tesseract
+            plateText = pytesseract.image_to_string(imgRoiThresh, config="--psm 7")
+
+            # Display the detected text
+            cv2.putText(img, plateText.strip(), (x, y - 10), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 255, 0), 2)
+            print("Detected Number Plate:", plateText.strip())
+
             cv2.imshow("Number Plate", imgRoi)
 
     cv2.imshow("Result", img)
